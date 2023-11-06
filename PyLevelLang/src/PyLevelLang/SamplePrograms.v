@@ -36,9 +36,9 @@ Definition to_json_field_list_body to_json to_json_field_list t : interp_type t 
        match s with
        | (a, rest) =>
            match t2 with
-           | TEmpty => append (append key ": ") (to_json t1 a)
-           | _ => append (append (append (append
-                   key ": ") (to_json t1 a)) ", ") (to_json_field_list t2 rest)
+           | TEmpty => append (append (append """" key) """: ") (to_json t1 a)
+           | _ => append (append (append (append (append
+                   """" key) """: ") (to_json t1 a)) ", ") (to_json_field_list t2 rest)
            end
          end
    | TEmpty => fun i => "tt"
@@ -66,15 +66,17 @@ Definition generate_json_field_list_body generate_json generate_json_field_list 
   match t as t return (expr t -> expr String) with
   | TPair key t1 t2 => match t2 with
        | TEmpty => fun f =>
-          EBinop OConcatString (EBinop OConcatString (EBinop OConcatString
-              (EAtom (AString key))
-              (EAtom (AString ": ")))
+          EBinop OConcatString (EBinop OConcatString (EBinop OConcatString (EBinop OConcatString
+              (EAtom (AString """"))
+              (EAtom (AString key)))
+              (EAtom (AString """: ")))
               (generate_json t1 (EUnop (OFst _ _ _) f)))
               (EAtom (AString ""))
        | t2 => fun f =>
-        EBinop OConcatString (EBinop OConcatString (EBinop OConcatString
-            (EAtom (AString key))
-            (EAtom (AString ": ")))
+        EBinop OConcatString (EBinop OConcatString (EBinop OConcatString (EBinop OConcatString
+            (EAtom (AString """"))
+            (EAtom (AString key)))
+            (EAtom (AString """: ")))
             (generate_json t1 (EUnop (OFst _ _ _) f)))
             (EBinop OConcatString (EAtom (AString ", "))
               (generate_json_field_list t2 (EUnop (OSnd _ _ t2) f)))
@@ -350,7 +352,7 @@ Section Generate_Json_Tests_Section.
   reflexivity. Abort.
 
   Goal to_json (TPair "foo" TString (TPair "bar" TInt TEmpty)) ("hi", (7, tt))
-  = "{foo: ""hi"", bar: 7}".
+  = "{""foo"": ""hi"", ""bar"": 7}".
   reflexivity. Abort.
 
   Goal interp_expr (map.put map.empty "x" (existT interp_type Bool true))
@@ -369,37 +371,29 @@ Section Generate_Json_Tests_Section.
         (generate_json (TList Bool) (EVar (TList Bool) "x")) = "[true, false, false]".
   reflexivity. Abort.
 
-
-
-
   Compute (interp_expr (map.put map.empty "x" (existT interp_type (TPair "foo" TString TInt)
         ("hi", 7)))
         (generate_json (TPair "foo" TString TInt) (EVar _ "x")) =? 
   to_json (TPair "foo" TString TInt) ("hi", 7))%string.
 
-
-
-
-
-
   Goal interp_expr (map.put map.empty "x" (existT interp_type (TPair "foo" TString (TPair "bar" TInt TEmpty))
         ("hi", (7, tt))))
         (generate_json (TPair "foo" TString (TPair "bar" TInt TEmpty)) (EVar (TPair "foo" TString (TPair "bar" TInt TEmpty)) "x"))
-        = "{foo: ""hi"", bar: 7}".
+        = "{""foo"": ""hi"", ""bar"": 7}".
   reflexivity. Abort.
 
   Goal interp_expr (map.put map.empty "x"
       (existT interp_type (TPair "foo" TString (TPair "bar" (TPair "baz" TString TEmpty) TEmpty))
                           ("a", (("b", tt), tt))))
         (generate_json (TPair "foo" TString (TPair "bar" (TPair "baz" TString TEmpty) TEmpty)) (EVar _ "x"))
-        = "{foo: ""a"", bar: {baz: ""b""}}".
+        = "{""foo"": ""a"", ""bar"": {""baz"": ""b""}}".
   reflexivity. Abort.
 
   Goal interp_expr (map.put map.empty "x"
       (existT interp_type (TPair "foo" (TPair "bar" (TPair "baz" TString TEmpty) TEmpty) (TPair "bar" (TPair "baz" TString TEmpty) TEmpty))
                           ((("a", tt), tt), (("b", tt), tt))))
         (generate_json (TPair "foo" (TPair "bar" (TPair "baz" TString TEmpty) TEmpty) (TPair "bar" (TPair "baz" TString TEmpty) TEmpty)) (EVar _ "x"))
-        = "{foo: {bar: {baz: ""a""}}, bar: {baz: ""b""}}".
+        = "{""foo"": {""bar"": {""baz"": ""a""}}, ""bar"": {""baz"": ""b""}}".
   reflexivity. Abort.
 
   Goal interp_expr (map.put map.empty "x"
